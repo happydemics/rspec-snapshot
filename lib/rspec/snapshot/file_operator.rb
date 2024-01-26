@@ -47,6 +47,10 @@ module RSpec
       # @param [String] snapshot_name The snapshot name.
       # @param [String] value The value to write to file.
       def write(value)
+        if ci? && file_does_not_exist?
+          raise "Snapshot file not found at path #{@snapshot_path}"
+        end
+
         return unless should_write?
 
         file = File.new(@snapshot_path, 'w+')
@@ -67,6 +71,10 @@ module RSpec
 
       private def file_does_not_exist?
         !File.exist?(@snapshot_path)
+      end
+
+      private def ci?
+        !!ENV.fetch('CI', nil)
       end
     end
   end

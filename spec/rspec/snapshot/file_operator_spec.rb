@@ -109,23 +109,45 @@ describe RSpec::Snapshot::FileOperator do
     context 'when the snapshot does not exist' do
       before do
         allow(File).to receive(:exist?).and_return(false)
-        subject.write(value)
       end
 
-      it 'checks for file existence' do
-        expect(File).to have_received(:exist?).with(relative_snapshot_path)
+      context 'when not running in CI mode' do
+        before { subject.write(value) }
+
+        it 'checks for file existence' do
+          expect(File).to have_received(:exist?).with(relative_snapshot_path)
+        end
+
+        it 'creates a new file instance' do
+          expect(File).to have_received(:new).with(relative_snapshot_path, 'w+')
+        end
+
+        it 'writes the value to the file' do
+          expect(file).to have_received(:write).with(value)
+        end
+
+        it 'closes the file' do
+          expect(file).to have_received(:close)
+        end
       end
 
-      it 'creates a new file instance' do
-        expect(File).to have_received(:new).with(relative_snapshot_path, 'w+')
-      end
+      context 'when running in CI mode' do
+        around do |example|
+          ci = ENV.fetch('CI', nil)
+          ENV['CI'] = 'true'
+          example.run
+        ensure
+          ENV['CI'] = ci
+        end
 
-      it 'writes the value to the file' do
-        expect(file).to have_received(:write).with(value)
-      end
-
-      it 'closes the file' do
-        expect(file).to have_received(:close)
+        it 'raises an error' do
+          expect { subject.write(value) }.to(
+            raise_error(
+              RuntimeError,
+              'Snapshot file not found at path spec/__snapshots__/descriptive_snapshot_name.snap'
+            )
+          )
+        end
       end
     end
 
@@ -135,12 +157,15 @@ describe RSpec::Snapshot::FileOperator do
       end
 
       context 'and the UPDATE_SNAPSHOTS env var is set' do
-        before do
-          allow(ENV).to(
-            receive(:fetch).with('UPDATE_SNAPSHOTS', nil).and_return('true')
-          )
-          subject.write(value)
+        around do |example|
+          update_snapshot = ENV.fetch('UPDATE_SNAPSHOTS', nil)
+          ENV['UPDATE_SNAPSHOTS'] = 'true'
+          example.run
+        ensure
+          ENV['UPDATE_SNAPSHOTS'] = update_snapshot
         end
+
+        before { subject.write(value) }
 
         it 'checks for file existence' do
           expect(File).to have_received(:exist?).with(relative_snapshot_path)
@@ -161,9 +186,6 @@ describe RSpec::Snapshot::FileOperator do
 
       context 'and the UPDATE_SNAPSHOTS env var is not set' do
         before do
-          allow(ENV).to(
-            receive(:fetch).with('UPDATE_SNAPSHOTS', nil).and_return(nil)
-          )
           subject.write(value)
         end
 
