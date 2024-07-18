@@ -144,7 +144,8 @@ describe RSpec::Snapshot::FileOperator do
           expect { subject.write(value) }.to(
             raise_error(
               RuntimeError,
-              'Snapshot file not found at path spec/__snapshots__/descriptive_snapshot_name.snap'
+              'Snapshot file not found at path ' \
+              'spec/__snapshots__/descriptive_snapshot_name.snap'
             )
           )
         end

@@ -368,6 +368,33 @@ describe RSpec::Snapshot::Matchers do
         end
       end
 
+      context 'and snapshot name is a path including a directory' do
+        let(:original_snapshot_value) { 'foo' }
+        let(:updated_snapshot_value) { 'bar' }
+        let(:snapshot_name) { 'folder/update_existing_snapshot' }
+        let(:snapshot_path) do
+          current_directory_path.join('__snapshots__',
+                                      "#{snapshot_name}.snap")
+        end
+
+        let!(:actual) do
+          file = File.new(snapshot_path, 'w+')
+          file.write(original_snapshot_value)
+          file.close
+
+          expect(updated_snapshot_value).to match_snapshot(snapshot_name)
+
+          file = File.new(snapshot_path)
+          actual = file.read
+          file.close
+          actual
+        end
+
+        it 'ignores the snapshot and updates it to the current value' do
+          expect(actual).to eq(updated_snapshot_value)
+        end
+      end
+
       context 'and a snapshot file does not exist' do
         let(:snapshot_value) { 'foo' }
         let(:snapshot_name) { 'update_non_existing_snapshot' }
@@ -424,6 +451,14 @@ describe RSpec::Snapshot::Matchers do
 
         it 'does not update the snapshot to the current value' do
           expect(actual).to eq(original_snapshot_value)
+        end
+
+        context 'and snapshot name is a path including a directory' do
+          let(:snapshot_name) { 'folder/do_not_update_non_existing_snapshot' }
+
+          it 'ignores the snapshot and updates it to the current value' do
+            expect(actual).to eq(original_snapshot_value)
+          end
         end
       end
 

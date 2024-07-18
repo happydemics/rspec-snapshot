@@ -53,6 +53,12 @@ module RSpec
 
         return unless should_write?
 
+        write_to_file(value)
+      end
+
+      private def write_to_file(value)
+        folder = File.dirname(@snapshot_path)
+        FileUtils.mkdir_p(folder) unless File.directory?(folder)
         file = File.new(@snapshot_path, 'w+')
         file.write(value)
         RSpec.configuration.reporter.message(
